@@ -100,36 +100,71 @@ length(P)
 P = P/max(P)
 P
 
+ourfft <- function(recording) {
+  nfft=1024
+  
+  # window size (in points)
+  
+  window=64
+  
+  # overlap (in points)
+  overlap=32
+  
+  fs = recording@samp.rate
+  dur = length(rec@left)/recording@samp.rate
+  spec = specgram(x = recording@left,
+                  n = nfft,
+                  Fs = fs,
+                  window = window,
+                  overlap = overlap
+  )
+  #spec
+  # discard phase information
+  P = abs(spec$S)
+  P = P/max(P)
+  return(P)
+}
 
+c(ourfft(rec))
+
+?fft
+fftres <- abs(fft(rec@left))
+fftres<- fftres/max(fftres)
+str(fftres)
+
+length(fft(rec@left))
 
 library(keras)
 
-
-recordings_path = "recordings/Sine1/"
-boxes <- list.files(recordings_path)
-is_first_file = TRUE;
-boxes <- sapply(boxes, as.numeric)
-boxes <- sort(boxes)
-for (box in boxes) {
-  files <- list.files(paste(recordings_path, box, sep=""))
-  for (file in files) {
-    path <- paste(recordings_path, box, sep ="")
-    path <- paste(path, "/", sep="")
-    path <- paste(path, file, sep = "")
-    recording <- readWave(path)
-    recording <- extractWave(recording, from = 0.1, to = 0.3, xunit = 'time')
-    if(is_first_file == TRUE) {
-      is_first_file = FALSE
-      recordings <<- rbind(recording@left)
-    } else {
-      recordings <<- rbind(recordings, recording@left)
+prepareData <- function() {
+  recordings_path = "recordings/Sine1/"
+  boxes <- list.files(recordings_path)
+  is_first_file = TRUE;
+  boxes <- sapply(boxes, as.numeric)
+  boxes <- sort(boxes)
+  for (box in boxes) {
+    files <- list.files(paste(recordings_path, box, sep=""))
+    for (file in files) {
+      path <- paste(recordings_path, box, sep ="")
+      path <- paste(path, "/", sep="")
+      path <- paste(path, file, sep = "")
+      recording <- readWave(path)
+      recording <- extractWave(recording, from = 0.1, to = 0.3, xunit = 'time')
+      recording <- c(ourfft(rec))
+      if(is_first_file == TRUE) {
+        is_first_file = FALSE
+        recordings <<- rbind(recording)
+      } else {
+        recordings <<- rbind(recordings, recording)
+      }
     }
-  }
-  print(box)
-  
-} 
-str(recordings)
-x_train <- recordings
+  } 
+  return (recordings)
+}
+
+
+x_train <- prepareData()
+str(x_train)
 y_train <- array(c(71.2, 71.2, 71.2, 71.2, 
                    92.0, 92.0, 92.0, 92.0, 
                    57.9, 57.9, 57.9, 57.9, 
@@ -164,16 +199,16 @@ y_test <- y_test_set
 
 # Params -----
 
-batch_size <- 10
-epochs <- 50
+batch_size <- 15
+epochs <- 100
 
 # Define Model --------------------------------------------------------------
 
 model <- keras_model_sequential()
 model %>% 
-  layer_dense(units = 100, activation = 'relu', input_shape = c(8821)) %>% 
+  layer_dense(units = 1000, activation = 'relu', input_shape = c(140288)) %>% 
   #layer_dropout(rate = 0.4) %>% 
-  #layer_dense(units = 5, activation = 'relu') %>%
+  #layer_dense(units = 50, activation = 'relu') %>%
   #layer_dropout(rate = 0.3) %>%
   layer_dense(units = 1, activation = 'linear')
 
@@ -182,7 +217,7 @@ summary(model)
 model %>% compile(
   loss = 'mean_squared_error',
   optimizer = optimizer_rmsprop(),
-  metrics = c('mae')
+  metrics = c('accuracy')
 )
 
 # Training & Evaluation ----------------------------------------------------
@@ -202,6 +237,11 @@ score <- model %>% evaluate(
   x_test, y_test,
   verbose = 0
 )
+
+# Predictions --------------
+model %>% predict(x_test)
+
+y_test
 
 # Output metrics
 cat('Test loss:', score[[1]], '\n')
