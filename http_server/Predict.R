@@ -37,7 +37,7 @@ ourfft <- function(recording) {
 
 
 recording <- readWave(filePath)
-recording <- extractWave(recording, from = 0.1, to = 0.3, xunit = 'time')
+recording <- extractWave(recording, from = 0.20, to = 0.30, xunit = 'time')
 recording <- c(ourfft(recording))
 recordings <- rbind(recording)
 

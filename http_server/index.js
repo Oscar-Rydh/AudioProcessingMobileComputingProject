@@ -17,13 +17,17 @@ app.post('/estimation', upload.single('file'), function (req, res) {
     })
     const move = exec ('mv uploads/' + fileName + ' ./uploads/sound.wav')
     move.on('exit', (code, signal) => {
+        console.log('Will start r script')
         const predict = exec('Rscript Predict.R uploads/sound.wav model.hdf5')
         predict.stdout.on('data', data => {
             const result = data.split(" ")[1];
             if (result !== undefined) {
+                console.log('will send response: ' + result)
                 res.json({
                     result
                 })
+            } else {
+                console.log('Did not get a result from rscript')
             }
         })
     })
