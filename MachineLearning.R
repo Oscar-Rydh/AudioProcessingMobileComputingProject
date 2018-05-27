@@ -37,7 +37,7 @@ ourfft <- function(recording) {
 
 library(keras)
 
-prepareData <- function() {
+prepareDataMLP <- function() {
   recordings_path = "recordings/Sine1/"
   boxes <- list.files(recordings_path)
   is_first_file = TRUE;
@@ -63,8 +63,40 @@ prepareData <- function() {
   return (recordings)
 }
 
+prepareDataCNN <- function() {
+  recordings_path = "recordings/Sine1/"
+  boxes <- list.files(recordings_path)
+  recordings <- list()
+  i = 1;
+  is_first_file = TRUE
+  boxes <- sapply(boxes, as.numeric)
+  boxes <- sort(boxes)
+  for (box in boxes) {
+    files <- list.files(paste(recordings_path, box, sep=""))
+    for (file in files) {
+      path <- paste(recordings_path, box, sep ="")
+      path <- paste(path, "/", sep="")
+      path <- paste(path, file, sep = "")
+      recording <- readWave(path)
+      recording <- extractWave(recording, from = 0.1, to = 0.3, xunit = 'time')
+      recording <- ourfft(recording)
+      if(is_first_file == TRUE) {
+        is_first_file = FALSE
+        recordings[[i]] <- recording
+      } else {
+        recordings[[i]] <- recording
+      }
+      i = i + 1
+    }
+  }
+  recordings <- array_reshape(recordings, dim = (c(74,512,274,1)))
+  return (recordings)
+}
 
-x_train <- prepareData()
+x_train <- prepareDataCNN()
+str(x_train)
+#x_train <- prepareDataMLP()
+
 # Volume
 y_train <- array(c(rep(71.2, 6), 
                    rep(92.0, 6), 
@@ -106,10 +138,11 @@ train_test_split <- function() {
   index = seq(1:nall)
   trainIndex = sample(index, ntrain) #train data set
   
-  x_train_set = x_train[trainIndex,]
-  x_test_set = x_train[-trainIndex,]
+  x_train_set = x_train[trainIndex,,,]
+  x_test_set = x_train[-trainIndex,,,]
   x_train <- x_train_set
   x_test <- x_test_set
+  
   
   y_train_set =  y_train[trainIndex]
   y_test_set = y_train[-trainIndex]
@@ -120,9 +153,10 @@ train_test_split <- function() {
   result$train$y <- y_train
   result$test$x <- x_test
   result$test$y <- y_test
+  result$train$x <- array_reshape(data$train$x, dim = c(nrow(x_train), 512, 274, 1))
+  result$test$x <- array_reshape(data$test$x, dim = c(nrow(x_test), 512, 274, 1))
   return(result)
 }
-
 
 data <- train_test_split()
 
@@ -130,24 +164,44 @@ data <- train_test_split()
 
 batch_size <- 15
 epochs <- 49
-
 # Define Model --------------------------------------------------------------
 
-model <- keras_model_sequential()
-model %>% 
-  layer_dense(units = 2000, activation = 'relu', input_shape = c(69632)) %>% 
-  layer_dropout(rate = 0.2) %>%
-  layer_dense(units = 500, activation = 'relu') %>%
-  #layer_dropout(rate = 0.2) %>%
+modelMLP <- keras_model_sequential()
+modelMLP %>% 
+  layer_dense(units = 100, activation = 'relu', input_shape = c(140288)) %>% 
+  # layer_dropout(rate = 0.4) %>%
   layer_dense(units = 50, activation = 'relu') %>%
-  #layer_dropout(rate = 0.2) %>%
-  #layer_dense(units = 150, activation = 'relu') %>%
+  # layer_dropout(rate = 0.3) %>%
+  layer_dense(units = 25, activation = 'relu') %>%
+  # layer_dropout(rate = 0.3) %>%
+  layer_dense(units = 10, activation = 'relu') %>%
   # layer_dropout(rate = 0.3) %>%
   layer_dense(units = 1, activation = 'linear')
 
-summary(model)
+modelCNN <- keras_model_sequential()
+modelCNN <- keras_model_sequential() %>%
+  layer_conv_2d(filters = 128, kernel_size = c(3,3), activation = 'relu',
+                input_shape = c(512, 274, 1)) %>% 
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>% 
+  layer_dropout(rate = 0.25) %>% 
+  layer_conv_2d(filters = 64, kernel_size = c(3,3), activation = 'relu') %>% 
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>% 
+  layer_dropout(rate = 0.25) %>% 
+  layer_conv_2d(filters = 32, kernel_size = c(3,3), activation = 'relu') %>% 
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>% 
+  layer_dropout(rate = 0.25) %>% 
+  layer_conv_2d(filters = 16, kernel_size = c(3,3), activation = 'relu') %>% 
+  layer_max_pooling_2d(pool_size = c(2, 2)) %>% 
+  layer_dropout(rate = 0.25) %>% 
+  layer_flatten() %>% 
+  layer_dense(units = 128, activation = 'relu') %>% 
+  layer_dropout(rate = 0.5) %>% 
+  layer_dense(units = 1, activation = 'linear')
+  
+  
+summary(modelCNN)
 
-model %>% compile(
+modelCNN %>% compile(
   loss = 'mean_squared_error',
   optimizer = optimizer_rmsprop(),
   metrics = c('mae')
@@ -156,7 +210,7 @@ model %>% compile(
 # Training & Evaluation ----------------------------------------------------
 
 # Fit model to data
-history <- model %>% fit(
+history <- modelCNN %>% fit(
   data$train$x, data$train$y,
   batch_size = batch_size,
   epochs = epochs,
