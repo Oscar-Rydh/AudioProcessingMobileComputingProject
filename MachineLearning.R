@@ -89,25 +89,46 @@ prepareDataCNN <- function() {
       i = i + 1
     }
   }
-  recordings <- array_reshape(recordings, dim = (c(38,512,274,1)))
+  recordings <- array_reshape(recordings, dim = (c(74,512,274,1)))
   return (recordings)
 }
 
 x_train <- prepareDataCNN()
-
+str(x_train)
 #x_train <- prepareDataMLP()
-y_train <- array(c(71.2, 71.2, 71.2, 71.2, 
-                   92.0, 92.0, 92.0, 92.0, 
-                   57.9, 57.9, 57.9, 57.9, 
-                   15.7, 15.7, 15.7, 15.7, 
-                   1.2, 1.2, 
-                   138.2, 138.2, 138.2, 138.2, 
-                   24.9, 24.9, 24.9, 24.9, 
-                   2.9, 2.9, 2.9, 2.9, 
-                   103.4, 103.4, 103.4, 103.4, 
-                   18.8, 18.8, 18.8, 18.8
+
+# Volume
+y_train <- array(c(rep(71.2, 6), 
+                   rep(92.0, 6), 
+                   rep(57.9, 6), 
+                   rep(15.7, 6), 
+                   rep(1.2, 2),
+                   rep(138.2, 6), 
+                   rep(24.9, 6),
+                   rep(2.9, 6), 
+                   rep(103.4, 6), 
+                   rep(18.8, 6),
+                   rep(8.4, 6),
+                   rep(8.1, 6),
+                   rep(18.7, 6)
                    )
                  )
+# Height
+y_train <- array(c(rep(40.5, 6), 
+                   rep(46.0, 6), 
+                   rep(31.5, 6),
+                   rep(19.0, 6), 
+                   rep(7.0, 2),
+                   rep(79.0, 6), 
+                   rep(24.0, 6), 
+                   rep(8.0, 6), 
+                   rep(40.0, 6), 
+                   rep(20.0, 6),
+                   rep(24.0, 6),
+                   rep(12.0, 6),
+                   rep(16.0, 6)
+                   )
+)
 
 train_test_split <- function() {
   set.seed(sample(1:21400, 1)) #can provide any number for seed
@@ -122,6 +143,7 @@ train_test_split <- function() {
   x_train <- x_train_set
   x_test <- x_test_set
   
+  
   y_train_set =  y_train[trainIndex]
   y_test_set = y_train[-trainIndex]
   y_train <- y_train_set
@@ -131,12 +153,13 @@ train_test_split <- function() {
   result$train$y <- y_train
   result$test$x <- x_test
   result$test$y <- y_test
-  result$train$x <- array_reshape(data$train$x, dim = c(nrow(data$train$x), 512, 274, 1))
-  result$test$x <- array_reshape(data$test$x, dim = c(nrow(data$test$x), 512, 274, 1))
+  result$train$x <- array_reshape(data$train$x, dim = c(nrow(x_train), 512, 274, 1))
+  result$test$x <- array_reshape(data$test$x, dim = c(nrow(x_test), 512, 274, 1))
   return(result)
 }
 
 data <- train_test_split()
+str(data$train$x)
 # Dis is our code
 
 # Params -----
