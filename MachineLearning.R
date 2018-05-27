@@ -5,6 +5,9 @@
 
 library(tuneR)
 library(seewave)
+library(oce)
+library(signal, warn.conflicts = F, quietly = T) # signal processing functions
+library(oce, warn.conflicts = F, quietly = T)
 
 ourfft <- function(recording) {
   nfft=1024
@@ -17,7 +20,7 @@ ourfft <- function(recording) {
   overlap=32
   
   fs = recording@samp.rate
-  dur = length(rec@left)/recording@samp.rate
+  dur = length(recording@left)/recording@samp.rate
   spec = specgram(x = recording@left,
                   n = nfft,
                   Fs = fs,
@@ -31,14 +34,6 @@ ourfft <- function(recording) {
   return(P)
 }
 
-c(ourfft(rec))
-
-?fft
-fftres <- abs(fft(rec@left))
-fftres<- fftres/max(fftres)
-str(fftres)
-
-length(fft(rec@left))
 
 library(keras)
 
@@ -56,7 +51,7 @@ prepareData <- function() {
       path <- paste(path, file, sep = "")
       recording <- readWave(path)
       recording <- extractWave(recording, from = 0.1, to = 0.3, xunit = 'time')
-      recording <- c(ourfft(rec))
+      recording <- c(ourfft(recording))
       if(is_first_file == TRUE) {
         is_first_file = FALSE
         recordings <<- rbind(recording)
@@ -70,7 +65,6 @@ prepareData <- function() {
 
 
 x_train <- prepareData()
-str(x_train)
 y_train <- array(c(71.2, 71.2, 71.2, 71.2, 
                    92.0, 92.0, 92.0, 92.0, 
                    57.9, 57.9, 57.9, 57.9, 
@@ -83,23 +77,34 @@ y_train <- array(c(71.2, 71.2, 71.2, 71.2,
                    18.8, 18.8, 18.8, 18.8
                    )
                  )
-str(y_train)
-set.seed(100) #can provide any number for seed
-nall = nrow(x_train) #total number of rows in data
-ntrain = floor(0.9 * nall) # number of rows for train,70%
-ntest = floor(0.1* nall) # number of rows for test, 30%
-index = seq(1:nall)
-trainIndex = sample(index, ntrain) #train data set
 
-x_train_set = x_train[trainIndex,]
-x_test_set = x_train[-trainIndex,]
-x_train <- x_train_set
-x_test <- x_test_set
+train_test_split <- function() {
+  set.seed(sample(1:21400, 1)) #can provide any number for seed
+  nall = nrow(x_train) #total number of rows in data
+  ntrain = floor(0.9 * nall) # number of rows for train,90%
+  ntest = floor(0.1* nall) # number of rows for test, 10%
+  index = seq(1:nall)
+  trainIndex = sample(index, ntrain) #train data set
+  
+  x_train_set = x_train[trainIndex,]
+  x_test_set = x_train[-trainIndex,]
+  x_train <- x_train_set
+  x_test <- x_test_set
+  
+  y_train_set =  y_train[trainIndex]
+  y_test_set = y_train[-trainIndex]
+  y_train <- y_train_set
+  y_test <- y_test_set  
+  result <- NULL
+  result$train$x <- x_train
+  result$train$y <- y_train
+  result$test$x <- x_test
+  result$test$y <- y_test
+  return(result)
+}
 
-y_train_set =  y_train[trainIndex]
-y_test_set = y_train[-trainIndex]
-y_train <- y_train_set
-y_test <- y_test_set
+
+data <- train_test_split()
 
 # Dis is our code
 
@@ -113,9 +118,13 @@ epochs <- 100
 model <- keras_model_sequential()
 model %>% 
   layer_dense(units = 1000, activation = 'relu', input_shape = c(140288)) %>% 
-  #layer_dropout(rate = 0.4) %>% 
-  #layer_dense(units = 50, activation = 'relu') %>%
-  #layer_dropout(rate = 0.3) %>%
+  # layer_dropout(rate = 0.4) %>%
+  layer_dense(units = 500, activation = 'relu') %>%
+  # layer_dropout(rate = 0.3) %>%
+  layer_dense(units = 250, activation = 'relu') %>%
+  # layer_dropout(rate = 0.3) %>%
+  layer_dense(units = 100, activation = 'relu') %>%
+  # layer_dropout(rate = 0.3) %>%
   layer_dense(units = 1, activation = 'linear')
 
 summary(model)
@@ -123,14 +132,14 @@ summary(model)
 model %>% compile(
   loss = 'mean_squared_error',
   optimizer = optimizer_rmsprop(),
-  metrics = c('accuracy')
+  metrics = c('mae')
 )
 
 # Training & Evaluation ----------------------------------------------------
 
 # Fit model to data
 history <- model %>% fit(
-  x_train, y_train,
+  data$train$x, data$train$y,
   batch_size = batch_size,
   epochs = epochs,
   verbose = 1,
@@ -140,12 +149,12 @@ history <- model %>% fit(
 plot(history)
 
 score <- model %>% evaluate(
-  x_test, y_test,
+  data$test$x, data$test$y,
   verbose = 0
 )
 
 # Predictions --------------
-model %>% predict(x_test)
+model %>% predict(data$test$x)
 
 y_test
 

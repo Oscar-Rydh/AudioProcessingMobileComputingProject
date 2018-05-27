@@ -118,7 +118,7 @@ x_test <- array_reshape(x_test, c(nrow(x_test), 784))
 x_train <- x_train / 255
 x_test <- x_test / 255
 
- cat(nrow(x_train), 'train samples\n')
+cat(nrow(x_train), 'train samples\n')
 cat(nrow(x_test), 'test samples\n')
 
 # Convert class vectors to binary class matrices
