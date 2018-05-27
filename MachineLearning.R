@@ -223,16 +223,23 @@ history <- modelCNN %>% fit(
 
 plot(history)
 
+# Output metrics
 score <- model %>% evaluate(
   data$test$x, data$test$y,
   verbose = 0
-)
+); score
+
 
 # Predictions --------------
-model %>% predict(data$test$x)
+predicted <- model %>% predict(data$test$x); predicted
+matrix(data$test$y)
+round(array(abs(predicted - matrix(data$test$y))) / array(predicted), 2)
 
-y_test
+# Save model
+filename <- paste("models/", "loss-", round(score$loss, 3), 
+                  "-meanAbsError-", round(score$mean_absolute_error, 3),
+                  ".hdf5", sep="")
+save_model_hdf5(model, filename, overwrite = FALSE, include_optimizer = TRUE)
 
-# Output metrics
-cat('Test loss:', score[[1]], '\n')
-cat('Test accuracy:', score[[2]], '\n')
+
+
