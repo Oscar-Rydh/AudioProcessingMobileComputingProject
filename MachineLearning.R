@@ -1,7 +1,7 @@
-#install.packages("tuneR", repos = "http://cran.r-project.org")
-#install.packages("seewave")
-#install.packages("fftw")
-#install.packages("oce")
+# install.packages("tuneR", repos = "http://cran.r-project.org")
+# install.packages("seewave")
+# install.packages("fftw")
+# install.packages("oce")
 
 library(tuneR)
 library(seewave)
@@ -50,7 +50,7 @@ prepareData <- function() {
       path <- paste(path, "/", sep="")
       path <- paste(path, file, sep = "")
       recording <- readWave(path)
-      recording <- extractWave(recording, from = 0.1, to = 0.3, xunit = 'time')
+      recording <- extractWave(recording, from = 0.20, to = 0.30, xunit = 'time')
       recording <- c(ourfft(recording))
       if(is_first_file == TRUE) {
         is_first_file = FALSE
@@ -82,21 +82,21 @@ y_train <- array(c(rep(71.2, 6),
                    )
                  )
 # Height
-y_train <- array(c(rep(40.5, 6), 
-                   rep(46.0, 6), 
-                   rep(31.5, 6),
-                   rep(19.0, 6), 
-                   rep(7.0, 2),
-                   rep(79.0, 6), 
-                   rep(24.0, 6), 
-                   rep(8.0, 6), 
-                   rep(40.0, 6), 
-                   rep(20.0, 6),
-                   rep(24.0, 6),
-                   rep(12.0, 6),
-                   rep(16.0, 6)
-                   )
-)
+# y_train <- array(c(rep(40.5, 6), 
+#                    rep(46.0, 6), 
+#                    rep(31.5, 6),
+#                    rep(19.0, 6), 
+#                    rep(7.0, 2),
+#                    rep(79.0, 6), 
+#                    rep(24.0, 6), 
+#                    rep(8.0, 6), 
+#                    rep(40.0, 6), 
+#                    rep(20.0, 6),
+#                    rep(24.0, 6),
+#                    rep(12.0, 6),
+#                    rep(16.0, 6)
+#                    )
+#)
 
 train_test_split <- function() {
   set.seed(sample(1:21400, 1)) #can provide any number for seed
@@ -126,24 +126,22 @@ train_test_split <- function() {
 
 data <- train_test_split()
 
-# Dis is our code
-
 # Params -----
 
 batch_size <- 15
-epochs <- 100
+epochs <- 49
 
 # Define Model --------------------------------------------------------------
 
 model <- keras_model_sequential()
 model %>% 
-  layer_dense(units = 1000, activation = 'relu', input_shape = c(140288)) %>% 
-  # layer_dropout(rate = 0.4) %>%
+  layer_dense(units = 2000, activation = 'relu', input_shape = c(69632)) %>% 
+  layer_dropout(rate = 0.2) %>%
   layer_dense(units = 500, activation = 'relu') %>%
-  # layer_dropout(rate = 0.3) %>%
-  layer_dense(units = 250, activation = 'relu') %>%
-  # layer_dropout(rate = 0.3) %>%
-  layer_dense(units = 100, activation = 'relu') %>%
+  #layer_dropout(rate = 0.2) %>%
+  layer_dense(units = 50, activation = 'relu') %>%
+  #layer_dropout(rate = 0.2) %>%
+  #layer_dense(units = 150, activation = 'relu') %>%
   # layer_dropout(rate = 0.3) %>%
   layer_dense(units = 1, activation = 'linear')
 
@@ -181,7 +179,9 @@ matrix(data$test$y)
 round(array(abs(predicted - matrix(data$test$y))) / array(predicted), 2)
 
 # Save model
-filename <- paste("models/", "loss-", round(score$loss, 3), 
+test_type <- 'volume'
+#test_type <- 'height'
+filename <- paste("models/", test_type, "-loss-", round(score$loss, 3), 
                   "-meanAbsError-", round(score$mean_absolute_error, 3),
                   ".hdf5", sep="")
 save_model_hdf5(model, filename, overwrite = FALSE, include_optimizer = TRUE)
