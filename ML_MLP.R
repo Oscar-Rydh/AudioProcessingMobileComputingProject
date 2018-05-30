@@ -148,6 +148,7 @@ model %>%
   # layer_dropout(rate = 0.3) %>%
   layer_dense(units = 1, activation = 'linear')
 
+summary(model)
 
 model %>% compile(
   loss = 'mean_squared_error',
