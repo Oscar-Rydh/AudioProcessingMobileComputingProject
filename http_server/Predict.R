@@ -41,7 +41,7 @@ recording <- extractWave(recording, from = 0.20, to = 0.30, xunit = 'time')
 recording <- c(ourfft(recording))
 recordings <- rbind(recording)
 
-model <- load_model_hdf5('http_server/model.hdf5')
+model <- load_model_hdf5(modelPath)
 
 predicted <- model %>% predict(recordings);
 
