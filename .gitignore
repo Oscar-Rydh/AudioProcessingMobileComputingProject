@@ -1,4 +1,3 @@
-models/
 **/*.DS_Store
 .Rhistory
 http_server/uploads/*

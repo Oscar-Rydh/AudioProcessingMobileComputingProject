@@ -8,6 +8,16 @@ app.use(bodyParser.json())
 const { exec } = require('child_process')
 
 
+/**
+ * Change this variable to decide what model to use
+ */
+const PREDICT_VOLUME = true;
+
+
+
+/**
+ * Defines our endpoint
+ */
 app.post('/estimation', upload.single('file'), function (req, res) {
     var fileName = req.file.filename;
 
@@ -18,7 +28,12 @@ app.post('/estimation', upload.single('file'), function (req, res) {
     const move = exec ('mv uploads/' + fileName + ' ./uploads/sound.wav')
     move.on('exit', (code, signal) => {
         console.log('Will start r script')
-        const predict = exec('Rscript Predict.R uploads/sound.wav model.hdf5')
+        let predict = undefined;
+        if(PREDICT_VOLUME === true) {
+            predict = exec('Rscript Predict.R uploads/sound.wav volume.hdf5')
+        } else {
+            predict = exec('Rscript Predict.R uploads/sound.wav distance.hdf5')
+        }
         predict.stdout.on('data', data => {
             const result = data.split(" ")[1];
             if (result !== undefined) {
